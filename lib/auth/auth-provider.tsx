@@ -2,9 +2,10 @@
 
 import { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { User } from '@supabase/auth-helpers-nextjs';
+import { User as SupabaseUser } from '@supabase/auth-helpers-nextjs';
 import { createClient } from '@/lib/utils';
 import { toast } from 'sonner';
+import { User } from '@/lib/types';
 
 interface AuthContextType {
   user: User | null;
@@ -22,6 +23,20 @@ const AuthContext = createContext<AuthContextType>({
 
 export const useAuth = () => useContext(AuthContext);
 
+const convertUser = (supabaseUser: SupabaseUser | null): User | null => {
+  if (!supabaseUser) return null;
+
+  return {
+    id: supabaseUser.id,
+    email: supabaseUser.email || undefined,
+    username: supabaseUser.user_metadata?.username || supabaseUser.email?.split('@')[0] || 'User',
+    avatar_url: supabaseUser.user_metadata?.avatar_url,
+    created_at: supabaseUser.created_at,
+    aud: supabaseUser.aud,
+    last_seen: new Date().toISOString()
+  };
+};
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -35,10 +50,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         if (error) throw error;
         
-        setUser(session?.user ?? null);
+        const convertedUser = convertUser(session?.user ?? null);
+        setUser(convertedUser);
         
-        if (!session?.user) {
-          // Only redirect if we're not already on the login page
+        if (!convertedUser) {
           const currentPath = window.location.pathname;
           if (currentPath !== '/login') {
             router.push('/login');
@@ -58,8 +73,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Subscribe to auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state changed:', event);
-        setUser(session?.user ?? null);
+        const convertedUser = convertUser(session?.user ?? null);
+        setUser(convertedUser);
         setLoading(false);
 
         if (event === 'SIGNED_IN') {
@@ -84,7 +99,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (error) throw error;
       
-      setUser(data.user);
+      setUser(convertUser(data.user));
       toast.success('Signed in successfully');
       router.push('/chats');
     } catch (error) {

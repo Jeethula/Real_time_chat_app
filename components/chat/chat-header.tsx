@@ -1,8 +1,9 @@
-import { useState } from 'react';
+"use client";
+
 import { useRouter } from 'next/navigation';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { FiSearch, FiStar, FiMoreHorizontal, FiChevronLeft } from 'react-icons/fi';
+import { Search, Star, ChevronLeft } from 'lucide-react';
 import { Chat, User } from '@/lib/types';
 
 interface ChatHeaderProps {
@@ -12,7 +13,6 @@ interface ChatHeaderProps {
 
 export default function ChatHeader({ chat, participants }: ChatHeaderProps) {
   const router = useRouter();
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
   
   const formatParticipants = (participants: User[]) => {
     if (!participants.length) return 'No participants';
@@ -41,64 +41,61 @@ export default function ChatHeader({ chat, participants }: ChatHeaderProps) {
       .substring(0, 2);
   };
 
-  const avatarUrl = chat.is_group_chat
-    ? undefined
-    : participants[0]?.avatar_url;
-
   return (
-    <div className="border-b px-4 py-2.5 flex items-center justify-between bg-white">
-      <div className="flex items-center">
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="h-8 w-8 lg:hidden mr-2 text-gray-500"
-          onClick={() => router.push('/chats')}
-        >
-          <FiChevronLeft className="h-4 w-4" />
-        </Button>
-        
-        <Avatar className="h-8 w-8 mr-3">
-          <AvatarImage src={avatarUrl || ''} alt={displayName} />
-          <AvatarFallback className="bg-gray-200 text-gray-600 text-xs">
-            {getInitials(displayName)}
-          </AvatarFallback>
-        </Avatar>
-        
-        <div>
-          <div className="font-medium">
-            {displayName}
-          </div>
-          {participants.length > 0 && (
-            <div className="text-xs text-gray-500 truncate max-w-[300px]">
+    <div className="border-b p-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-8 w-8 lg:hidden mr-2 text-gray-500"
+            onClick={() => router.push('/chats')}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          
+          <div>
+            <h2 className="font-medium">{displayName}</h2>
+            <div className="text-xs text-gray-500">
               {formatParticipants(participants)}
             </div>
-          )}
+          </div>
         </div>
-      </div>
-      
-      <div className="flex items-center space-x-1">
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="h-8 w-8 text-gray-500"
-          onClick={() => setIsSearchOpen(!isSearchOpen)}
-        >
-          <FiSearch className="h-4 w-4" />
-        </Button>
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="h-8 w-8 text-gray-500"
-        >
-          <FiStar className="h-4 w-4" />
-        </Button>
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="h-8 w-8 text-gray-500"
-        >
-          <FiMoreHorizontal className="h-4 w-4" />
-        </Button>
+
+        <div className="flex items-center gap-2">
+          {/* Stacked avatars */}
+          <div className="flex -space-x-2">
+            {participants.slice(0, 4).map((participant, i) => (
+              <Avatar key={participant.id} className="w-6 h-6 border-2 border-white">
+                <AvatarImage src={participant.avatar_url} alt={participant.username} />
+                <AvatarFallback className="bg-gray-200 text-gray-600 text-xs">
+                  {getInitials(participant.username)}
+                </AvatarFallback>
+              </Avatar>
+            ))}
+            {participants.length > 4 && (
+              <Avatar className="w-6 h-6 border-2 border-white bg-green-500 text-white flex items-center justify-center text-xs">
+                <span>+{participants.length - 4}</span>
+              </Avatar>
+            )}
+          </div>
+
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="text-gray-500"
+          >
+            <Star className="h-5 w-5" />
+          </Button>
+          
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="text-gray-500"
+          >
+            <Search className="h-5 w-5" />
+          </Button>
+        </div>
       </div>
     </div>
   );

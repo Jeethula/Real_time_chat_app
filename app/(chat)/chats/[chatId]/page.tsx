@@ -6,6 +6,7 @@ import { createClient } from '@/lib/utils';
 import { useAuth } from '@/lib/auth/auth-provider';
 import ChatHeader from '@/components/chat/chat-header';
 import MessageList from '@/components/chat/message-list';
+import MessageInput from '@/components/chat/message-input';
 import { Chat, ChatParticipant, User } from '@/lib/types';
 
 interface ChatWithParticipants extends Chat {
@@ -24,7 +25,6 @@ export default function ChatPage() {
       try {
         if (!currentUser || !chatId) return;
 
-        // Fetch chat with participants and their user info
         const { data: chatData, error: chatError } = await supabase
           .from('chats')
           .select(`
@@ -32,7 +32,13 @@ export default function ChatPage() {
             chat_participants!inner(
               user_id,
               role,
-              user:users(*)
+              user:users(
+                id,
+                username,
+                email,
+                avatar_url,
+                last_seen
+              )
             )
           `)
           .eq('id', chatId)
@@ -40,7 +46,6 @@ export default function ChatPage() {
           
         if (chatError) throw chatError;
 
-        // Verify user is a participant
         const isParticipant = chatData.chat_participants.some(
           (p: ChatParticipant & { user: User }) => p.user_id === currentUser.id
         );
@@ -59,7 +64,6 @@ export default function ChatPage() {
     
     fetchChat();
     
-    // Subscribe to chat updates
     const channel = supabase
       .channel(`chat:${chatId}`)
       .on('postgres_changes', {
@@ -97,13 +101,14 @@ export default function ChatPage() {
   }
 
   const otherParticipants = chat.chat_participants
-    .filter((p: ChatParticipant & { user: User }) => p.user_id !== currentUser?.id)
+    .filter(p => p.user_id !== currentUser?.id)
     .map(p => p.user);
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-white">
       <ChatHeader chat={chat} participants={otherParticipants} />
       <MessageList chatId={chatId as string} />
+      <MessageInput chatId={chatId as string} />
     </div>
   );
 }

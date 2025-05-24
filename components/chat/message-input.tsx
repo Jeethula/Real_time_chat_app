@@ -5,7 +5,15 @@ import { createClient } from '@/lib/utils';
 import { useAuth } from '@/lib/auth/auth-provider';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { FiSend, FiPaperclip } from 'react-icons/fi';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { 
+  Send, 
+  Paperclip, 
+  Smile, 
+  Clock,
+  Star,
+  ChevronDown 
+} from 'lucide-react';
 import { toast } from 'sonner';
 
 interface MessageInputProps {
@@ -18,23 +26,22 @@ export default function MessageInput({ chatId, onMessageSent }: MessageInputProp
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { user } = useAuth();
+  const { user: currentUser } = useAuth();
   const supabase = createClient();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!message.trim() || !user) return;
+    if (!message.trim() || !currentUser) return;
 
     try {
       setSending(true);
       const timestamp = new Date().toISOString();
 
-      // Insert message
       const { data: newMessage, error: messageError } = await supabase
         .from('messages')
         .insert({
           chat_id: chatId,
-          user_id: user.id,
+          user_id: currentUser.id,
           content: message.trim(),
           created_at: timestamp,
           is_read: false
@@ -47,12 +54,10 @@ export default function MessageInput({ chatId, onMessageSent }: MessageInputProp
 
       if (messageError) throw messageError;
 
-      // Update chat timestamp
       await supabase.rpc('update_chat_timestamp', {
         p_chat_id: chatId
       });
 
-      // Optimistically update the UI
       if (onMessageSent) {
         onMessageSent(newMessage);
       }
@@ -68,13 +73,12 @@ export default function MessageInput({ chatId, onMessageSent }: MessageInputProp
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !user) return;
+    if (!file || !currentUser) return;
 
     try {
       setUploading(true);
       const timestamp = new Date().toISOString();
 
-      // Upload file to Supabase Storage
       const fileExt = file.name.split('.').pop();
       const fileName = `${Math.random().toString(36).slice(2)}.${fileExt}`;
       const filePath = `${chatId}/${fileName}`;
@@ -86,18 +90,16 @@ export default function MessageInput({ chatId, onMessageSent }: MessageInputProp
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
       const { data: { publicUrl } } = supabase
         .storage
         .from('chat-attachments')
         .getPublicUrl(filePath);
 
-      // Insert message with attachment
       const { data: newMessage, error: messageError } = await supabase
         .from('messages')
         .insert({
           chat_id: chatId,
-          user_id: user.id,
+          user_id: currentUser.id,
           content: file.name,
           attachment_url: publicUrl,
           attachment_type: file.type,
@@ -112,12 +114,6 @@ export default function MessageInput({ chatId, onMessageSent }: MessageInputProp
 
       if (messageError) throw messageError;
 
-      // Update chat timestamp
-      await supabase.rpc('update_chat_timestamp', {
-        p_chat_id: chatId
-      });
-
-      // Optimistically update the UI
       if (onMessageSent) {
         onMessageSent(newMessage);
       }
@@ -135,44 +131,79 @@ export default function MessageInput({ chatId, onMessageSent }: MessageInputProp
   };
 
   return (
-    <form onSubmit={handleSubmit} className="p-4 border-t bg-white">
-      <div className="flex items-center gap-2">
-        <Input
-          type="file"
-          ref={fileInputRef}
-          className="hidden"
-          onChange={handleFileSelect}
-          accept="image/*,.pdf,.doc,.docx,.txt"
-        />
-        
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="flex-shrink-0"
-          disabled={uploading}
-          onClick={() => fileInputRef.current?.click()}
-        >
-          <FiPaperclip className="h-5 w-5" />
+    <div className="border-t p-3">
+      <div className="flex items-center gap-2 mb-2">
+        <Button variant="outline" size="sm" className="text-xs h-7 rounded-full">
+          WhatsApp
         </Button>
-
-        <Input
-          placeholder="Type a message"
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          disabled={sending || uploading}
-          className="flex-1"
-        />
-
-        <Button
-          type="submit"
-          size="icon"
-          className="flex-shrink-0"
-          disabled={!message.trim() || sending || uploading}
-        >
-          <FiSend className="h-5 w-5" />
+        <Button variant="outline" size="sm" className="text-xs h-7 rounded-full">
+          Private Note
         </Button>
       </div>
-    </form>
+
+      <div className="flex items-center gap-2">
+        <Avatar className="w-8 h-8 bg-green-500 text-white">
+          <AvatarFallback>
+            {currentUser?.username?.[0] || 'U'}
+          </AvatarFallback>
+        </Avatar>
+
+        <div className="flex-1 flex items-center gap-2 border rounded-lg px-3 py-2">
+          <Input
+            className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0 h-8 placeholder:text-gray-400"
+            placeholder="Message..."
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            disabled={sending || uploading}
+          />
+
+          <input
+            type="file"
+            ref={fileInputRef}
+            className="hidden"
+            onChange={handleFileSelect}
+            accept="image/*,.pdf,.doc,.docx,.txt"
+          />
+
+          <div className="flex items-center gap-2 text-gray-400">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+            >
+              <Paperclip className="w-5 h-5" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8">
+              <Smile className="w-5 h-5" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8">
+              <Clock className="w-5 h-5" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8">
+              <Star className="w-5 h-5" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8">
+              <span className="text-lg">⚡</span>
+            </Button>
+          </div>
+        </div>
+
+        <Button 
+          onClick={handleSubmit}
+          size="icon" 
+          className="bg-green-500 hover:bg-green-600 text-white"
+          disabled={!message.trim() || sending}
+        >
+          <Send className="w-4 h-4" />
+        </Button>
+      </div>
+
+      <div className="flex items-center justify-between mt-2">
+        <div className="text-xs text-gray-500">Periskope</div>
+        <ChevronDown className="w-4 h-4 text-gray-500" />
+      </div>
+    </div>
   );
 }

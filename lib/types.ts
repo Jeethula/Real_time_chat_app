@@ -23,7 +23,10 @@ export interface Message {
   attachment_url?: string;
   attachment_type?: string;
   parent_message_id?: string;
-  user?: User;
+}
+
+export interface MessageWithUser extends Message {
+  user: User;
 }
 
 export interface ChatParticipant {
@@ -49,6 +52,34 @@ export interface Chat {
   updated_at: string;
   last_message_id?: string;
   chat_participants: ChatParticipant[];
+}
+
+export interface ChatDetailsResponse {
+  chat_id: string;
+  is_group_chat: boolean;
+  group_name: string | null;
+  created_at: string;
+  updated_at: string;
+  participants: Array<{
+    user_id: string;
+    username: string;
+    avatar_url?: string;
+    role?: string;
+    joined_at: string;
+  }> | string;
+  latest_message: {
+    id: string;
+    content: string;
+    created_at: string;
+    user_id: string;
+    is_read: boolean;
+    user: {
+      id: string;
+      username: string;
+      avatar_url?: string;
+    };
+  } | null;
+  unread_count: number;
 }
 
 export interface ChatWithDetails extends Omit<Chat, 'chat_participants'> {

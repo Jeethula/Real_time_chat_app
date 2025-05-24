@@ -51,11 +51,11 @@ export default function ChatLayout({
   }
 
   return (
-    <div className="flex h-screen">
+    <main className="flex h-screen bg-white">
       <ChatSidebar />
-      <main className="flex-1">
+      <div className="flex-1 flex flex-col">
         {children}
-      </main>
-    </div>
+      </div>
+    </main>
   );
 }
