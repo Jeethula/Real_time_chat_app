@@ -1,9 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  eslint: {
-    ignoreDuringBuilds: true,
+  reactStrictMode: true,
+  swcMinify: true,
+  experimental: {
+    esmExternals: 'loose', // Required for emoji-mart
   },
-  images: { unoptimized: false },
-};
+  webpack: (config) => {
+    config.externals = [...config.externals, { canvas: "canvas" }];  // Required for emoji-mart
+    return config;
+  },
+}
 
-module.exports = nextConfig;
+module.exports = nextConfig
