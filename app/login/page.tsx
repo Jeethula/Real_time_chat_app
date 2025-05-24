@@ -82,7 +82,7 @@ export default function LoginPage() {
         </form>
 
         <div className="text-center">
-          <span className="text-gray-500 text-sm">Don't have an account?</span>
+          <span className="text-gray-500 text-sm">Don&apos;t have an account?</span>
           <button
             onClick={() => router.push("/signup")}
             className="ml-1 text-green-500 hover:text-green-600 text-sm font-medium"

@@ -108,7 +108,7 @@ export default function ChatPage() {
         <div className="text-center">
           <h3 className="text-lg font-medium text-gray-900">Chat not found</h3>
           <p className="text-sm text-gray-500 mt-1">
-            The chat you're looking for doesn't exist or you don't have access to it.
+            The chat you&apos;re looking for doesn&apos;t exist or you don&apos;t have access to it.
           </p>
         </div>
       </div>

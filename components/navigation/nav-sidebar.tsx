@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from '@/lib/auth/auth-provider';
+import { User } from '@supabase/supabase-js';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { usePathname } from 'next/navigation';
@@ -89,10 +90,10 @@ export function NavSidebar() {
                 size="icon"
                 className="w-10 h-10 rounded-full overflow-hidden bg-gray-100 hover:ring-2 hover:ring-gray-200"
               >
-                {user?.user_metadata?.avatar_url ? (
-                  <img 
-                    src={user.user_metadata.avatar_url} 
-                    alt={user.user_metadata.full_name || 'User'} 
+                {user?.avatar_url ? (
+                  <img
+                    src={user.avatar_url}
+                    alt={user.username || 'User'}
                     className="w-full h-full object-cover"
                   />
                 ) : (
