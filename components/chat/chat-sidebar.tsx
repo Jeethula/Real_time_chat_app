@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { createClient } from '@/lib/utils';
 import { useAuth } from '@/lib/auth/auth-provider';
@@ -22,7 +22,8 @@ import {
   Users,
   Columns,
   Settings,
-  Plus
+  Plus,
+  MessageSquarePlus
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
@@ -32,10 +33,15 @@ interface NavButtonProps {
   icon: React.ElementType;
   active?: boolean;
   count?: number;
+  onClick?: () => void;
+  className?: string;
 }
 
-const NavButton = ({ icon: Icon, active, count }: NavButtonProps) => (
-  <button className={`text-gray-500 hover:text-green-500 relative ${active ? 'text-green-500' : ''}`}>
+const NavButton = ({ icon: Icon, active, count, onClick, className }: NavButtonProps) => (
+  <button 
+    className={`text-gray-500 hover:text-green-500 relative ${active ? 'text-green-500' : ''} ${className || ''}`}
+    onClick={onClick}
+  >
     <Icon className="w-6 h-6" />
     {count && (
       <span className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full text-[8px] flex items-center justify-center">
@@ -55,68 +61,72 @@ export function ChatSidebar() {
   const router = useRouter();
   const pathname = usePathname();
   const supabase = createClient();
+  const activeChatId = pathname ? pathname.split('/').slice(-1)[0] : null;
 
-  useEffect(() => {
-    const fetchChats = async () => {
-      try {
-        if (!currentUser) return;
+  const fetchChats = useCallback(async () => {
+    try {
+      if (!currentUser) return;
 
-        const { data: chatsData, error } = await supabase
-          .rpc('get_chat_details', {
-            user_id: currentUser.id
-          });
-
-        if (error) throw error;
-
-        const processedChats: ChatWithDetails[] = (chatsData as ChatDetailsResponse[]).map(chat => {
-          const participants = Array.isArray(chat.participants) 
-            ? chat.participants 
-            : JSON.parse(chat.participants as string);
-
-          const otherParticipants = participants
-            .filter((p: { user_id: string; username: string; avatar_url?: string }) => p.user_id !== currentUser.id);
-
-          const chatName = chat.is_group_chat
-            ? chat.group_name || 'Unnamed Group'
-            : otherParticipants[0]?.username || 'Unknown User';
-
-          const latestMessage = chat.latest_message 
-            ? (typeof chat.latest_message === 'string' 
-                ? JSON.parse(chat.latest_message) 
-                : chat.latest_message)
-            : null;
-
-          return {
-            id: chat.chat_id,
-            is_group_chat: chat.is_group_chat,
-            group_name: chat.group_name || undefined,
-            created_at: chat.created_at,
-            updated_at: chat.updated_at,
-            name: chatName,
-            latest_message: latestMessage,
-            unread_count: chat.unread_count || 0,
-            chat_participants: participants.map((p: { user_id: string; username: string; avatar_url?: string; role?: string }) => ({
-              user_id: p.user_id,
-              role: p.role,
-              user: {
-                id: p.user_id,
-                username: p.username,
-                avatar_url: p.avatar_url
-              }
-            })),
-            labels: []
-          };
+      setLoading(true);
+      const { data: chatsData, error } = await supabase
+        .rpc('get_chat_details', {
+          user_id: currentUser.id
         });
 
-        setChats(processedChats);
-        setFilteredChats(processedChats);
-      } catch (error) {
-        console.error('Error in fetchChats:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+      if (error) throw error;
 
+      const processedChats: ChatWithDetails[] = (chatsData as ChatDetailsResponse[]).map(chat => {
+        const participants = Array.isArray(chat.participants) 
+          ? chat.participants 
+          : JSON.parse(chat.participants as string);
+
+        const otherParticipants = participants
+          .filter((p: { user_id: string; username: string; avatar_url?: string }) => 
+            p.user_id !== currentUser.id
+          );
+
+        const chatName = chat.is_group_chat
+          ? chat.group_name || 'Unnamed Group'
+          : otherParticipants[0]?.username || 'Unknown User';
+
+        const latestMessage = chat.latest_message 
+          ? (typeof chat.latest_message === 'string' 
+              ? JSON.parse(chat.latest_message) 
+              : chat.latest_message)
+          : null;
+
+        return {
+          id: chat.chat_id,
+          is_group_chat: chat.is_group_chat,
+          group_name: chat.group_name || undefined,
+          created_at: chat.created_at,
+          updated_at: chat.updated_at,
+          name: chatName,
+          latest_message: latestMessage,
+          unread_count: chat.unread_count || 0,
+          chat_participants: participants.map((p: any) => ({
+            user_id: p.user_id,
+            role: p.role,
+            user: {
+              id: p.user_id,
+              username: p.username,
+              avatar_url: p.avatar_url
+            }
+          })),
+          labels: []
+        };
+      });
+
+      setChats(processedChats);
+      setFilteredChats(processedChats);
+    } catch (error) {
+      console.error('Error in fetchChats:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentUser, supabase]);
+
+  useEffect(() => {
     fetchChats();
 
     const channel = supabase
@@ -141,7 +151,7 @@ export function ChatSidebar() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [currentUser, supabase]);
+  }, [fetchChats, supabase]);
 
   useEffect(() => {
     const filtered = chats.filter(chat => {
@@ -151,20 +161,17 @@ export function ChatSidebar() {
       const messageMatch = chat.latest_message?.content.toLowerCase().includes(searchTerm.toLowerCase());
       return nameMatch || messageMatch;
     });
-    
     setFilteredChats(filtered);
   }, [searchTerm, chats]);
-
-  const activeChatId = pathname ? pathname.split('/').slice(-1)[0] : null;
 
   return (
     <>
       {/* Left sidebar */}
-      <div className="w-16 bg-white border-r flex flex-col items-center py-4 gap-6">
+      <div className="w-16 bg-white border-r flex flex-col items-center py-4">
         <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center text-white">
           <span className="text-xs">P</span>
         </div>
-        <nav className="flex flex-col gap-6 items-center">
+        <nav className="flex flex-col gap-6 items-center mt-6">
           <NavButton icon={MessageCircle} />
           <NavButton icon={Home} />
           <NavButton icon={Inbox} active />
@@ -175,6 +182,14 @@ export function ChatSidebar() {
           <NavButton icon={Columns} />
           <NavButton icon={Settings} />
         </nav>
+        {/* New chat button at bottom */}
+        <div className="mt-auto mb-4">
+          <NavButton 
+            icon={MessageSquarePlus} 
+            onClick={() => setShowUserList(true)}
+            className="bg-green-500 text-white p-2 rounded-full hover:bg-green-600"
+          />
+        </div>
       </div>
 
       {/* Conversation list */}
@@ -183,7 +198,10 @@ export function ChatSidebar() {
           <div className="flex items-center gap-2 mb-3">
             <MessageCircle className="w-5 h-5 text-gray-500" />
             <span className="text-gray-500 text-sm">chats</span>
-            <RefreshCw className="w-4 h-4 text-gray-500 ml-auto" />
+            <RefreshCw 
+              className="w-4 h-4 text-gray-500 ml-auto cursor-pointer" 
+              onClick={() => fetchChats()} 
+            />
             <HelpCircle className="w-4 h-4 text-gray-500" />
           </div>
           <div className="flex items-center gap-2 text-sm mb-3">
@@ -203,6 +221,16 @@ export function ChatSidebar() {
                 </Badge>
               </div>
             </div>
+          </div>
+
+          <div className="relative">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder="Search chats..."
+              className="pl-9 h-9"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
         </div>
 
@@ -239,10 +267,19 @@ export function ChatSidebar() {
                   user={chat.chat_participants[0]?.user}
                 />
               ))}
+              {filteredChats.length === 0 && !loading && (
+                <div className="p-4 text-center text-sm text-gray-500">
+                  No chats found
+                </div>
+              )}
             </div>
           )}
         </div>
       </div>
+
+      {showUserList && (
+        <UserList onClose={() => setShowUserList(false)} />
+      )}
     </>
   );
 }
