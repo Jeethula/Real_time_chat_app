@@ -157,8 +157,9 @@ export default function MessageList({ chatId, messages, onMessagesChange }: Mess
     return groups;
   }, {});
 
+  // Update the return section to ensure proper scrolling
   return (
-    <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
+    <div className="flex-1 overflow-y-auto p-4 h-full">
       <div className="space-y-6">
         {Object.entries(groupedMessages).map(([date, dateMessages]) => (
           <div key={date} className="space-y-4">
@@ -175,7 +176,6 @@ export default function MessageList({ chatId, messages, onMessagesChange }: Mess
                   {showUserInfo && (
                     <div className="flex items-center gap-1 mb-1">
                       <span className="text-green-600 text-sm">{message.user?.username}</span>
-                      <span className="text-xs text-gray-500">{message.user?.email}</span>
                     </div>
                   )}
                   <div className={`p-3 rounded-lg shadow-sm max-w-xs ${
@@ -184,12 +184,20 @@ export default function MessageList({ chatId, messages, onMessagesChange }: Mess
                     <p>{message.content}</p>
                   </div>
                   <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                    {isCurrentUser && message.user?.email && (
-                      <span className="text-xs text-gray-400">{message.user.email}</span>
-                    )}
                     <span>{new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                     {isCurrentUser && (
-                      <span className="text-green-500">✓✓</span>
+                      <span className="text-green-500">
+                        {message.is_read ? (
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M18 7l-8 8-4-4"></path>
+                            <path d="M9 15l-4-4"></path>
+                          </svg>
+                        ) : (
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M20 6l-9 9-4-4"></path>
+                          </svg>
+                        )}
+                      </span>
                     )}
                   </div>
                 </div>

@@ -119,15 +119,18 @@ export default function ChatPage() {
     .filter(p => p.user_id !== currentUser?.id)
     .map(p => p.user);
 
+  // Update the return section to ensure the message list gets proper height
   return (
     <div className="flex flex-col h-full">
       <ChatHeader chat={chat} participants={otherParticipants} />
-      <div className="flex-1 overflow-hidden chat-background">
-        <MessageList 
-          chatId={chatId as string} 
-          messages={messages}
-          onMessagesChange={setMessages}
-        />
+      <div className="flex-1 overflow-hidden chat-background relative">
+        <div className="absolute inset-0">
+          <MessageList 
+            chatId={chatId as string} 
+            messages={messages}
+            onMessagesChange={setMessages}
+          />
+        </div>
       </div>
       <MessageInput 
         chatId={chatId as string} 

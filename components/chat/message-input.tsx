@@ -192,8 +192,8 @@ export default function MessageInput({ chatId, onMessageSent }: MessageInputProp
   return (
     <div className="border-t bg-[#f0f2f5] p-3">
       <div className="flex items-center gap-2 mb-2">
-        <span className="text-xs text-gray-500 font-medium">WhatsApp</span>
-        <span className="text-xs text-gray-500 font-medium">Private Note</span>
+        <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-medium">WhatsApp</span>
+        <span className="text-xs px-2 py-0.5 rounded-full bg-gray-200 text-gray-700 font-medium">Private Note</span>
       </div>
 
       <div className="flex items-center gap-2">
