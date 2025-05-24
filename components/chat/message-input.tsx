@@ -15,10 +15,11 @@ import {
   ChevronDown 
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { Message, MessageWithUser } from '@/lib/types';
 
 interface MessageInputProps {
   chatId: string;
-  onMessageSent?: (message: any) => void;
+  onMessageSent?: (message: MessageWithUser) => void;
 }
 
 export default function MessageInput({ chatId, onMessageSent }: MessageInputProps) {
@@ -37,6 +38,26 @@ export default function MessageInput({ chatId, onMessageSent }: MessageInputProp
       setSending(true);
       const timestamp = new Date().toISOString();
 
+      // Create optimistic message
+      const optimisticMessage: MessageWithUser = {
+        id: `temp-${Date.now()}`,
+        chat_id: chatId,
+        user_id: currentUser.id,
+        content: message.trim(),
+        created_at: timestamp,
+        is_read: false,
+        user: currentUser
+      };
+
+      // Update UI optimistically
+      if (onMessageSent) {
+        onMessageSent(optimisticMessage);
+      }
+
+      // Clear input
+      setMessage('');
+
+      // Send actual message
       const { data: newMessage, error: messageError } = await supabase
         .from('messages')
         .insert({
@@ -54,18 +75,16 @@ export default function MessageInput({ chatId, onMessageSent }: MessageInputProp
 
       if (messageError) throw messageError;
 
+      // Update chat timestamp
       await supabase.rpc('update_chat_timestamp', {
         p_chat_id: chatId
       });
 
-      if (onMessageSent) {
-        onMessageSent(newMessage);
-      }
-
-      setMessage('');
     } catch (error) {
       console.error('Error sending message:', error);
       toast.error('Failed to send message');
+      // Restore message if failed
+      setMessage(message);
     } finally {
       setSending(false);
     }
@@ -78,6 +97,22 @@ export default function MessageInput({ chatId, onMessageSent }: MessageInputProp
     try {
       setUploading(true);
       const timestamp = new Date().toISOString();
+
+      // Create optimistic message for file
+      const optimisticMessage: MessageWithUser = {
+        id: `temp-${Date.now()}`,
+        chat_id: chatId,
+        user_id: currentUser.id,
+        content: `Uploading ${file.name}...`,
+        created_at: timestamp,
+        is_read: false,
+        user: currentUser
+      };
+
+      // Update UI optimistically
+      if (onMessageSent) {
+        onMessageSent(optimisticMessage);
+      }
 
       const fileExt = file.name.split('.').pop();
       const fileName = `${Math.random().toString(36).slice(2)}.${fileExt}`;
@@ -114,9 +149,10 @@ export default function MessageInput({ chatId, onMessageSent }: MessageInputProp
 
       if (messageError) throw messageError;
 
-      if (onMessageSent) {
-        onMessageSent(newMessage);
-      }
+      // Update chat timestamp
+      await supabase.rpc('update_chat_timestamp', {
+        p_chat_id: chatId
+      });
 
       toast.success('File uploaded successfully');
     } catch (error) {
@@ -143,6 +179,7 @@ export default function MessageInput({ chatId, onMessageSent }: MessageInputProp
 
       <div className="flex items-center gap-2">
         <Avatar className="w-8 h-8 bg-green-500 text-white">
+          <AvatarImage src={currentUser?.avatar_url} />
           <AvatarFallback>
             {currentUser?.username?.[0] || 'U'}
           </AvatarFallback>
@@ -155,6 +192,12 @@ export default function MessageInput({ chatId, onMessageSent }: MessageInputProp
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             disabled={sending || uploading}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSubmit(e);
+              }
+            }}
           />
 
           <input

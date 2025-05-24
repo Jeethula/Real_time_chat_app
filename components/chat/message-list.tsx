@@ -6,23 +6,26 @@ import { useAuth } from '@/lib/auth/auth-provider';
 import { formatDate } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Message, User, MessageWithUser } from '@/lib/types';
+import { Dispatch, SetStateAction } from 'react';
 
 interface MessageListProps {
   chatId: string;
+  messages: MessageWithUser[];
+  onMessagesChange: Dispatch<SetStateAction<MessageWithUser[]>>;
 }
 
 interface MessageGroups {
   [key: string]: MessageWithUser[];
 }
 
-export default function MessageList({ chatId }: MessageListProps) {
-  const [messages, setMessages] = useState<MessageWithUser[]>([]);
+export default function MessageList({ chatId, messages, onMessagesChange }: MessageListProps) {
   const [users, setUsers] = useState<Map<string, User>>(new Map());
   const [loading, setLoading] = useState(true);
   const { user: currentUser } = useAuth();
   const supabase = createClient();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Fetch users
   useEffect(() => {
     const fetchUsers = async () => {
       const { data: usersData } = await supabase
@@ -38,6 +41,7 @@ export default function MessageList({ chatId }: MessageListProps) {
     fetchUsers();
   }, [supabase]);
 
+  // Fetch messages
   useEffect(() => {
     const fetchMessages = async () => {
       try {
@@ -57,7 +61,7 @@ export default function MessageList({ chatId }: MessageListProps) {
           user: users.get(msg.user_id) || msg.user as User
         }));
 
-        setMessages(processedMessages);
+        onMessagesChange(processedMessages);
         
         if (currentUser) {
           await supabase.rpc('mark_messages_as_read', {
@@ -75,39 +79,29 @@ export default function MessageList({ chatId }: MessageListProps) {
     if (users.size > 0) {
       fetchMessages();
     }
-  }, [chatId, currentUser, supabase, users]);
+  }, [chatId, currentUser, supabase, users, onMessagesChange]);
 
+  // Real-time updates
   useEffect(() => {
     const channel = supabase
-      .channel(`chat:${chatId}`)
+      .channel(`chat_messages:${chatId}`)
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
         table: 'messages',
         filter: `chat_id=eq.${chatId}`
       }, async (payload) => {
-        const { data: messageData, error: messageError } = await supabase
-          .from('messages')
-          .select(`
-            *,
-            user:users(*)
-          `)
-          .eq('id', payload.new.id)
-          .single();
-
-        if (messageError) {
-          console.error('Error fetching new message:', messageError);
-          return;
-        }
-
-        const newMessage = {
-          ...messageData,
-          user: messageData.user as User
+        // Get user data for the message
+        const messageUser = users.get(payload.new.user_id) || await fetchUser(payload.new.user_id);
+        
+        const newMessage: MessageWithUser = {
+          ...payload.new as Message,
+          user: messageUser
         };
 
-        setMessages(prev => [...prev, newMessage]);
+        onMessagesChange(prev => [...prev, newMessage]);
 
-        if (currentUser && messageData.user_id !== currentUser.id) {
+        if (currentUser && newMessage.user_id !== currentUser.id) {
           await supabase.rpc('mark_messages_as_read', {
             p_chat_id: chatId,
             p_user_id: currentUser.id
@@ -119,8 +113,28 @@ export default function MessageList({ chatId }: MessageListProps) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [chatId, currentUser, supabase]);
+  }, [chatId, currentUser, supabase, users, onMessagesChange]);
 
+  // Fetch user data if not in cache
+  const fetchUser = async (userId: string): Promise<User> => {
+    const { data } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', userId)
+      .single();
+      
+    if (data) {
+      setUsers(prev => new Map(prev).set(data.id, data));
+      return data;
+    }
+    return {
+      id: userId,
+      username: 'Unknown User',
+      avatar_url: undefined
+    };
+  };
+
+  // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);

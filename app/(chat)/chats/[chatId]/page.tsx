@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/auth/auth-provider';
 import ChatHeader from '@/components/chat/chat-header';
 import MessageList from '@/components/chat/message-list';
 import MessageInput from '@/components/chat/message-input';
-import { Chat, ChatParticipant, User } from '@/lib/types';
+import { Chat, ChatParticipant, User, MessageWithUser } from '@/lib/types';
 
 interface ChatWithParticipants extends Chat {
   chat_participants: (ChatParticipant & { user: User })[];
@@ -16,6 +16,7 @@ interface ChatWithParticipants extends Chat {
 export default function ChatPage() {
   const { chatId } = useParams();
   const [chat, setChat] = useState<ChatWithParticipants | null>(null);
+  const [messages, setMessages] = useState<MessageWithUser[]>([]);
   const [loading, setLoading] = useState(true);
   const { user: currentUser } = useAuth();
   const supabase = createClient();
@@ -79,6 +80,10 @@ export default function ChatPage() {
     };
   }, [chatId, currentUser, supabase]);
 
+  const handleNewMessage = (message: MessageWithUser) => {
+    setMessages(prev => [...prev, message]);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -107,8 +112,15 @@ export default function ChatPage() {
   return (
     <div className="flex flex-col h-full bg-white">
       <ChatHeader chat={chat} participants={otherParticipants} />
-      <MessageList chatId={chatId as string} />
-      <MessageInput chatId={chatId as string} />
+      <MessageList 
+        chatId={chatId as string} 
+        messages={messages}
+        onMessagesChange={setMessages}
+      />
+      <MessageInput 
+        chatId={chatId as string} 
+        onMessageSent={handleNewMessage} 
+      />
     </div>
   );
 }
