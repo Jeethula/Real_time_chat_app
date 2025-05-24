@@ -182,18 +182,10 @@ export function ChatSidebar() {
           <NavButton icon={Columns} />
           <NavButton icon={Settings} />
         </nav>
-        {/* New chat button at bottom */}
-        <div className="mt-auto mb-4">
-          <NavButton 
-            icon={MessageSquarePlus} 
-            onClick={() => setShowUserList(true)}
-            className="bg-green-500 text-white p-2 rounded-full hover:bg-green-600"
-          />
-        </div>
       </div>
 
       {/* Conversation list */}
-      <div className="w-80 border-r overflow-y-auto">
+      <div className="w-80 border-r overflow-y-auto relative">
         <div className="p-3 border-b">
           <div className="flex items-center gap-2 mb-3">
             <MessageCircle className="w-5 h-5 text-gray-500" />
@@ -229,12 +221,12 @@ export function ChatSidebar() {
               placeholder="Search chats..."
               className="pl-9 h-9"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
             />
           </div>
         </div>
 
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-auto pb-16">
           {loading ? (
             <div className="p-3 space-y-3">
               {Array(5).fill(0).map((_, i) => (
@@ -275,6 +267,14 @@ export function ChatSidebar() {
             </div>
           )}
         </div>
+
+        {/* New chat button */}
+        <button
+          onClick={() => setShowUserList(true)}
+          className="absolute bottom-4 right-4 bg-green-500 hover:bg-green-600 text-white rounded-full p-3 shadow-lg transition-colors"
+        >
+          <MessageSquarePlus className="w-6 h-6" />
+        </button>
       </div>
 
       {showUserList && (
