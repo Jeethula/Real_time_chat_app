@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import { createClient } from '@/lib/utils';
 import { useAuth } from '@/lib/auth/auth-provider';
 import { Input } from '@/components/ui/input';
@@ -16,6 +17,13 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Message, MessageWithUser } from '@/lib/types';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+
+// Dynamically import emoji picker to avoid SSR issues
+const EmojiPicker = dynamic(() => import('./emoji-picker'), {
+  loading: () => <div className="p-4 text-center">Loading...</div>,
+  ssr: false
+});
 
 interface MessageInputProps {
   chatId: string;
@@ -26,9 +34,24 @@ export default function MessageInput({ chatId, onMessageSent }: MessageInputProp
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [showEmoji, setShowEmoji] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const { user: currentUser } = useAuth();
   const supabase = createClient();
+
+  const insertEmoji = (emoji: any) => {
+    const input = inputRef.current;
+    if (!input) return;
+    
+    const start = input.selectionStart || 0;
+    const end = input.selectionEnd || 0;
+    const newMessage = message.slice(0, start) + emoji.native + message.slice(end);
+    setMessage(newMessage);
+    setShowEmoji(false);
+    input.focus();
+    setTimeout(() => input.setSelectionRange(start + emoji.native.length, start + emoji.native.length), 0);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -167,14 +190,10 @@ export default function MessageInput({ chatId, onMessageSent }: MessageInputProp
   };
 
   return (
-    <div className="border-t p-3">
+    <div className="border-t bg-[#f0f2f5] p-3">
       <div className="flex items-center gap-2 mb-2">
-        <Button variant="outline" size="sm" className="text-xs h-7 rounded-full">
-          WhatsApp
-        </Button>
-        <Button variant="outline" size="sm" className="text-xs h-7 rounded-full">
-          Private Note
-        </Button>
+        <span className="text-xs text-gray-500 font-medium">WhatsApp</span>
+        <span className="text-xs text-gray-500 font-medium">Private Note</span>
       </div>
 
       <div className="flex items-center gap-2">
@@ -185,10 +204,11 @@ export default function MessageInput({ chatId, onMessageSent }: MessageInputProp
           </AvatarFallback>
         </Avatar>
 
-        <div className="flex-1 flex items-center gap-2 border rounded-lg px-3 py-2">
+        <div className="flex-1 flex items-center gap-2 bg-white rounded-lg px-3 py-2">
           <Input
-            className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0 h-8 placeholder:text-gray-400"
-            placeholder="Message..."
+            ref={inputRef}
+            className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0 h-8 placeholder:text-[#8696a0] text-[15px]"
+            placeholder="Type a message"
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             disabled={sending || uploading}
@@ -208,26 +228,33 @@ export default function MessageInput({ chatId, onMessageSent }: MessageInputProp
             accept="image/*,.pdf,.doc,.docx,.txt"
           />
 
-          <div className="flex items-center gap-2 text-gray-400">
+          <div className="flex items-center gap-2 text-[#54656f]">
             <Button 
               variant="ghost" 
               size="icon" 
-              className="h-8 w-8"
+              className="h-8 w-8 hover:bg-transparent hover:text-green-500"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
             >
               <Paperclip className="w-5 h-5" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              <Smile className="w-5 h-5" />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
+            <Popover open={showEmoji} onOpenChange={setShowEmoji}>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-transparent hover:text-green-500">
+                  <Smile className="w-5 h-5" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <EmojiPicker onEmojiSelect={insertEmoji} />
+              </PopoverContent>
+            </Popover>
+            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-transparent hover:text-green-500">
               <Clock className="w-5 h-5" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
+            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-transparent hover:text-green-500">
               <Star className="w-5 h-5" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
+            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-transparent hover:text-green-500">
               <span className="text-lg">⚡</span>
             </Button>
           </div>
@@ -244,8 +271,8 @@ export default function MessageInput({ chatId, onMessageSent }: MessageInputProp
       </div>
 
       <div className="flex items-center justify-between mt-2">
-        <div className="text-xs text-gray-500">Periskope</div>
-        <ChevronDown className="w-4 h-4 text-gray-500" />
+        <div className="text-xs text-[#8696a0]">Periskope</div>
+        <ChevronDown className="w-4 h-4 text-[#8696a0]" />
       </div>
     </div>
   );

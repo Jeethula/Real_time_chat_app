@@ -3,28 +3,56 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { MessageSquare } from "lucide-react";
-import { useAuth } from "@/lib/auth/auth-provider";
+import { createClient } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
-export default function LoginPage() {
+export default function SignUpPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const { signIn } = useAuth();
+  const supabase = createClient();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       setLoading(true);
-      await signIn(email, password);
-      router.push("/chats");
-      toast.success("Signed in successfully");
+
+      // Sign up with Supabase
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            username,
+          },
+        },
+      });
+
+      if (authError) throw authError;
+
+      if (authData.user) {
+        // Create user profile
+        const { error: profileError } = await supabase
+          .from('users')
+          .insert({
+            id: authData.user.id,
+            username,
+            email,
+            created_at: new Date().toISOString(),
+          });
+
+        if (profileError) throw profileError;
+      }
+
+      toast.success("Account created successfully");
+      router.push("/login");
     } catch (error) {
-      console.error("Login error:", error);
-      toast.error("Invalid email or password");
+      console.error("Signup error:", error);
+      toast.error("Failed to create account");
     } finally {
       setLoading(false);
     }
@@ -37,11 +65,26 @@ export default function LoginPage() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-500 text-white mb-4">
             <MessageSquare className="w-8 h-8" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Welcome back</h1>
-          <p className="text-gray-500">Sign in to continue to ChatApp</p>
+          <h1 className="text-2xl font-bold text-gray-900">Create an account</h1>
+          <p className="text-gray-500">Sign up to start chatting</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700" htmlFor="username">
+              Username
+            </label>
+            <Input
+              id="username"
+              type="text"
+              placeholder="Choose a username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+              className="w-full"
+            />
+          </div>
+
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700" htmlFor="email">
               Email
@@ -64,10 +107,11 @@ export default function LoginPage() {
             <Input
               id="password"
               type="password"
-              placeholder="Enter your password"
+              placeholder="Choose a password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              minLength={6}
               className="w-full"
             />
           </div>
@@ -77,17 +121,17 @@ export default function LoginPage() {
             className="w-full bg-green-500 hover:bg-green-600 text-white"
             disabled={loading}
           >
-            {loading ? "Signing in..." : "Sign in"}
+            {loading ? "Creating account..." : "Sign up"}
           </Button>
         </form>
 
         <div className="text-center">
-          <span className="text-gray-500 text-sm">Don't have an account?</span>
+          <span className="text-gray-500 text-sm">Already have an account?</span>
           <button
-            onClick={() => router.push("/signup")}
+            onClick={() => router.push("/login")}
             className="ml-1 text-green-500 hover:text-green-600 text-sm font-medium"
           >
-            Sign up
+            Sign in
           </button>
         </div>
       </div>

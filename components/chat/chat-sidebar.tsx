@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ConversationItem } from '@/components/chat/conversation-item';
 import UserList from '@/components/chat/user-list';
+import { toast } from 'sonner';
 import { 
   Filter, 
   Search, 
@@ -23,7 +24,8 @@ import {
   Columns,
   Settings,
   Plus,
-  MessageSquarePlus
+  MessageSquarePlus,
+  LogOut
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
@@ -62,6 +64,17 @@ export function ChatSidebar() {
   const pathname = usePathname();
   const supabase = createClient();
   const activeChatId = pathname ? pathname.split('/').slice(-1)[0] : null;
+
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      router.push('/login');
+      toast.success('Logged out successfully');
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast.error('Failed to log out');
+    }
+  };
 
   const fetchChats = useCallback(async () => {
     try {
@@ -121,6 +134,7 @@ export function ChatSidebar() {
       setFilteredChats(processedChats);
     } catch (error) {
       console.error('Error in fetchChats:', error);
+      toast.error('Failed to fetch chats');
     } finally {
       setLoading(false);
     }
@@ -182,6 +196,14 @@ export function ChatSidebar() {
           <NavButton icon={Columns} />
           <NavButton icon={Settings} />
         </nav>
+        {/* Add logout button at bottom */}
+        <div className="mt-auto">
+          <NavButton 
+            icon={LogOut} 
+            onClick={handleLogout}
+            className="text-red-500 hover:text-red-600"
+          />
+        </div>
       </div>
 
       {/* Conversation list */}
@@ -200,9 +222,6 @@ export function ChatSidebar() {
             <span className="text-green-600 font-medium flex items-center gap-1">
               <Filter className="w-4 h-4" /> Custom filter
             </span>
-            <Button variant="outline" size="sm" className="text-xs h-7 ml-2">
-              Save
-            </Button>
             <div className="ml-auto flex items-center gap-2">
               <Search className="w-4 h-4 text-gray-500" />
               <div className="flex items-center gap-1 text-gray-500">
@@ -268,10 +287,10 @@ export function ChatSidebar() {
           )}
         </div>
 
-        {/* New chat button */}
+        {/* New chat button - match WhatsApp style */}
         <button
           onClick={() => setShowUserList(true)}
-          className="absolute bottom-4 right-4 bg-green-500 hover:bg-green-600 text-white rounded-full p-3 shadow-lg transition-colors"
+          className="absolute bottom-4 right-4 bg-green-500 hover:bg-green-600 text-white rounded-full p-3 shadow-lg transition-transform hover:scale-105"
         >
           <MessageSquarePlus className="w-6 h-6" />
         </button>

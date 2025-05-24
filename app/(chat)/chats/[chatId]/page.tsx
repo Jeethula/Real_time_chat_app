@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, CSSProperties } from 'react';
 import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/utils';
 import { useAuth } from '@/lib/auth/auth-provider';
@@ -8,6 +8,7 @@ import ChatHeader from '@/components/chat/chat-header';
 import MessageList from '@/components/chat/message-list';
 import MessageInput from '@/components/chat/message-input';
 import { Chat, ChatParticipant, User, MessageWithUser } from '@/lib/types';
+import { Loader2 } from 'lucide-react';
 
 interface ChatWithParticipants extends Chat {
   chat_participants: (ChatParticipant & { user: User })[];
@@ -73,6 +74,15 @@ export default function ChatPage() {
         table: 'chats',
         filter: `id=eq.${chatId}`
       }, () => fetchChat())
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'messages',
+        filter: `chat_id=eq.${chatId}`
+      }, () => {
+        // Instead of fetching the whole chat, just update messages
+        // This will be handled by MessageList component
+      })
       .subscribe();
       
     return () => {
@@ -86,18 +96,18 @@ export default function ChatPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="flex-1 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-green-500" />
       </div>
     );
   }
 
   if (!chat) {
     return (
-      <div className="flex items-center justify-center h-full">
+      <div className="flex-1 flex items-center justify-center">
         <div className="text-center">
-          <h3 className="text-lg font-medium">Chat not found</h3>
-          <p className="text-muted-foreground">
+          <h3 className="text-lg font-medium text-gray-900">Chat not found</h3>
+          <p className="text-sm text-gray-500 mt-1">
             The chat you're looking for doesn't exist or you don't have access to it.
           </p>
         </div>
@@ -110,16 +120,18 @@ export default function ChatPage() {
     .map(p => p.user);
 
   return (
-    <div className="flex flex-col h-full bg-white">
+    <div className="flex flex-col h-full">
       <ChatHeader chat={chat} participants={otherParticipants} />
-      <MessageList 
-        chatId={chatId as string} 
-        messages={messages}
-        onMessagesChange={setMessages}
-      />
+      <div className="flex-1 overflow-hidden chat-background">
+        <MessageList 
+          chatId={chatId as string} 
+          messages={messages}
+          onMessagesChange={setMessages}
+        />
+      </div>
       <MessageInput 
         chatId={chatId as string} 
-        onMessageSent={handleNewMessage} 
+        onMessageSent={handleNewMessage}
       />
     </div>
   );
